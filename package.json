@@ -18,8 +18,8 @@
     "backend",
     "api"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Syed Ashar Ali",
+  "license": "MIT",
   "dependencies": {
     "bcrypt": "^5.1.1",
     "bullmq": "^5.65.1",
