@@ -27,6 +27,10 @@ const envSchema = z.object({
   // Rate limiting
   RATE_LIMIT_WINDOW_MS: z.string().regex(/^\d+$/).transform(Number).default('900000'), // 15 minutes
   RATE_LIMIT_MAX_REQUESTS: z.string().regex(/^\d+$/).transform(Number).default('100'),
+  // Notification providers (placeholders for real implementations)
+  EMAIL_FROM_ADDRESS: z.string().email().default('no-reply@example.com'),
+  EMAIL_PROVIDER: z.string().default('noop'),
+  SMS_PROVIDER: z.string().default('noop'),
 });
 
 // Validate environment variables

@@ -13,13 +13,33 @@ export const registerBodySchema = z.object({
 
 // Login validation schema (body)
 export const loginBodySchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password is required'),
+  // Authentication method and optional provider (for OAuth2 / SSO)
+  method: z.enum(['password', 'oauth2', 'saml', 'sso']).default('password').optional(),
+  provider: z.string().optional(),
+  // Credentials for password-based auth
+  email: z.string().email('Invalid email address').optional(),
+  password: z.string().min(1, 'Password is required').optional(),
+  // Optional fields/hooks for other flows (placeholders for future use)
+  oauthCode: z.string().optional(),
+  samlResponse: z.string().optional(),
+  ssoToken: z.string().optional(),
+  mfaCode: z.string().optional(),
 });
 
 // Change password validation schema (body)
 export const changePasswordBodySchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+});
+
+// Forgot password (request reset) schema
+export const requestPasswordResetBodySchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+// Reset password schema
+export const resetPasswordBodySchema = z.object({
+  token: z.string().min(1, 'Reset token is required'),
   newPassword: z.string().min(8, 'New password must be at least 8 characters'),
 });
 

@@ -53,6 +53,20 @@ const UserSchema = new Schema<IUserDocument>(
       default: false,
       index: true,
     },
+    passwordResetToken: {
+      type: String,
+      index: true,
+    },
+    passwordResetExpires: {
+      type: Date,
+    },
+    mfaEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    mfaSecret: {
+      type: String,
+    },
   },
   {
     timestamps: true,

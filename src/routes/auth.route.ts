@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { validate, authRateLimiter } from '../middlewares';
-import { registerBodySchema, loginBodySchema } from '../validators';
+import {
+  registerBodySchema,
+  loginBodySchema,
+  requestPasswordResetBodySchema,
+  resetPasswordBodySchema,
+} from '../validators';
 import { container } from '../di';
 import { AuthController } from '../controllers';
 
@@ -131,6 +136,67 @@ router.post(
   authRateLimiter,
   validate(loginBodySchema, 'body'),
   (req, res, next) => getAuthController().login(req, res, next)
+);
+
+/**
+ * @swagger
+ * /api/v1/auth/forgot-password:
+ *   post:
+ *     summary: Request a password reset
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: Password reset requested
+ */
+router.post(
+  '/forgot-password',
+  authRateLimiter,
+  validate(requestPasswordResetBodySchema, 'body'),
+  (req, res, next) => getAuthController().requestPasswordReset(req, res, next)
+);
+
+/**
+ * @swagger
+ * /api/v1/auth/reset-password:
+ *   post:
+ *     summary: Reset password using reset token
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - newPassword
+ *             properties:
+ *               token:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ */
+router.post(
+  '/reset-password',
+  authRateLimiter,
+  validate(resetPasswordBodySchema, 'body'),
+  (req, res, next) => getAuthController().resetPassword(req, res, next)
 );
 
 export default router;

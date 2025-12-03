@@ -1,3 +1,5 @@
+export type AuthMethod = 'password' | 'oauth2' | 'saml' | 'sso';
+
 export interface IUser {
   id: string;
   accountId: string; // Multi-tenant: user belongs to an account
@@ -10,6 +12,10 @@ export interface IUser {
   phone?: string;
   profilePicture?: string;
   onboardingCompleted: boolean; // Track if onboarding is completed
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
+  mfaEnabled?: boolean;
+  mfaSecret?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +32,10 @@ export class User implements IUser {
   phone?: string;
   profilePicture?: string;
   onboardingCompleted: boolean;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
+  mfaEnabled?: boolean;
+  mfaSecret?: string;
   createdAt: Date;
   updatedAt: Date;
 
@@ -41,6 +51,10 @@ export class User implements IUser {
     this.phone = data.phone;
     this.profilePicture = data.profilePicture;
     this.onboardingCompleted = data.onboardingCompleted ?? false;
+    this.passwordResetToken = data.passwordResetToken;
+    this.passwordResetExpires = data.passwordResetExpires;
+    this.mfaEnabled = data.mfaEnabled ?? false;
+    this.mfaSecret = data.mfaSecret;
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
   }

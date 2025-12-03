@@ -24,6 +24,10 @@ export class UserRepository extends BaseRepository<User, string> {
       phone: doc.phone,
       profilePicture: doc.profilePicture,
       onboardingCompleted: doc.onboardingCompleted ?? false,
+      passwordResetToken: doc.passwordResetToken,
+      passwordResetExpires: doc.passwordResetExpires,
+      mfaEnabled: doc.mfaEnabled,
+      mfaSecret: doc.mfaSecret,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
     });
@@ -50,6 +54,17 @@ export class UserRepository extends BaseRepository<User, string> {
   async findByAccountId(accountId: string): Promise<User[]> {
     const docs = await UserModel.find({ accountId }).exec();
     return docs.map((doc) => this.documentToModel(doc));
+  }
+
+  async findByPasswordResetToken(
+    tokenHash: string,
+    now: Date = new Date()
+  ): Promise<User | null> {
+    const doc = await UserModel.findOne({
+      passwordResetToken: tokenHash,
+      passwordResetExpires: { $gt: now },
+    }).exec();
+    return doc ? this.documentToModel(doc) : null;
   }
 
   async create(entity: Partial<IUser>): Promise<User> {
