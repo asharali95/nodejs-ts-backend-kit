@@ -1,6 +1,8 @@
-import express, { Application, Request, Response } from 'express';
+import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
+import helmet from 'helmet';
+import compression from 'compression';
 import {
   authRoutes,
   accountRoutes,
@@ -15,6 +17,37 @@ import { config } from './config';
 import { setupDI } from './di';
 import { AppError, ValidationError } from './errors';
 import { swaggerSpec } from './config/swagger';
+import { requestLogger, logger } from './utils';
+import { apiRateLimiter } from './middlewares';
+
+// Simple sanitization helpers to guard against basic XSS and query injection
+const sanitizeString = (value: string): string =>
+  value.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+const sanitizeObject = (value: any): any => {
+  if (value == null) return value;
+  if (typeof value === 'string') return sanitizeString(value);
+  if (Array.isArray(value)) return value.map(sanitizeObject);
+  if (typeof value === 'object') {
+    const cleaned: any = {};
+    Object.keys(value).forEach((key) => {
+      // Remove keys that look like Mongo operators or could be used for query injection
+      if (key.startsWith('$') || key.includes('.')) {
+        return;
+      }
+      cleaned[key] = sanitizeObject(value[key]);
+    });
+    return cleaned;
+  }
+  return value;
+};
+
+const sanitizeRequest = (req: Request, _res: Response, next: NextFunction): void => {
+  if (req.body) req.body = sanitizeObject(req.body);
+  if (req.query) req.query = sanitizeObject(req.query);
+  if (req.params) req.params = sanitizeObject(req.params);
+  next();
+};
 
 // Setup Dependency Injection
 setupDI();
@@ -29,9 +62,24 @@ app.use(cors({
   credentials: false,
 }));
 
-// Middleware
+// Security headers
+app.use(helmet());
+
+// Compression
+app.use(compression());
+
+// Logging
+app.use(requestLogger);
+
+// Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Sanitization (XSS + basic query injection protection)
+app.use(sanitizeRequest);
+
+// Global rate limiting
+app.use(apiRateLimiter);
 
 /**
  * @swagger
@@ -121,7 +169,10 @@ app.use((err: Error, _req: Request, res: Response) => {
   }
 
   // Handle unknown errors
-  console.error('Unexpected error:', err);
+  logger.error('Unexpected error', {
+    message: err.message,
+    stack: err.stack,
+  });
 
   return res.status(500).json({
     success: false,

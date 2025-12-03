@@ -24,6 +24,9 @@ const envSchema = z.object({
   // Template configuration
   APP_NAME: z.string().default('SaaS Backend Template'),
   TRIAL_DAYS: z.string().regex(/^\d+$/).transform(Number).default('14'),
+  // Rate limiting
+  RATE_LIMIT_WINDOW_MS: z.string().regex(/^\d+$/).transform(Number).default('900000'), // 15 minutes
+  RATE_LIMIT_MAX_REQUESTS: z.string().regex(/^\d+$/).transform(Number).default('100'),
 });
 
 // Validate environment variables

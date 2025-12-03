@@ -3,6 +3,7 @@ import { config } from './config';
 import { connectDatabase } from './database';
 import { redisCache } from './cache';
 import { trialExpirationWorker, trialExpirationQueue } from './queue';
+import { logger } from './utils';
 
 const startServer = async () => {
   try {
@@ -13,24 +14,26 @@ const startServer = async () => {
     // It will work if Redis is available, otherwise gracefully degrades
 
     // Start BullMQ worker for trial expiration
-    console.log('✅ BullMQ trial expiration worker started');
+    logger.info('✅ BullMQ trial expiration worker started');
 
     // Start Express server
     const server = app.listen(config.PORT, () => {
-      console.log(`🚀 Server is running on port ${config.PORT}`);
-      console.log(`📍 Environment: ${config.NODE_ENV}`);
-      console.log(`🔗 API Version: ${config.API_VERSION}`);
+      logger.info('🚀 Server started', {
+        port: config.PORT,
+        environment: config.NODE_ENV,
+        apiVersion: config.API_VERSION,
+      });
     });
 
     // Graceful shutdown
     const gracefulShutdown = async (signal: string) => {
-      console.log(`${signal} signal received: closing HTTP server`);
+      logger.info(`${signal} signal received: closing HTTP server`);
       server.close(async () => {
-        console.log('HTTP server closed');
+        logger.info('HTTP server closed');
         // Close BullMQ worker and queue
         await trialExpirationWorker.close();
         await trialExpirationQueue.close();
-        console.log('BullMQ workers closed');
+        logger.info('BullMQ workers closed');
         // Disconnect Redis
         await redisCache.disconnect();
         // Disconnect MongoDB
@@ -43,7 +46,7 @@ const startServer = async () => {
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error('Failed to start server', { error });
     process.exit(1);
   }
 };

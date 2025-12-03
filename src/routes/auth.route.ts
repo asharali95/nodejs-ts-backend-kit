@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { validate } from '../middlewares';
+import { validate, authRateLimiter } from '../middlewares';
 import { registerBodySchema, loginBodySchema } from '../validators';
 import { container } from '../di';
 import { AuthController } from '../controllers';
@@ -74,6 +74,7 @@ const getAuthController = (): AuthController => {
  */
 router.post(
   '/register',
+  authRateLimiter,
   validate(registerBodySchema, 'body'),
   (req, res, next) => getAuthController().register(req, res, next)
 );
@@ -127,6 +128,7 @@ router.post(
  */
 router.post(
   '/login',
+  authRateLimiter,
   validate(loginBodySchema, 'body'),
   (req, res, next) => getAuthController().login(req, res, next)
 );
