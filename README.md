@@ -7,59 +7,47 @@
 
 ```
 src/
-├── config/          # Configuration with environment validation
-│   └── index.ts
-├── controllers/     # Request handlers (extends BaseController)
+├── app.ts                # Express app configuration (security, rate limiting, routes)
+├── server.ts             # Server entry point & graceful shutdown
+├── config/               # Configuration with environment validation
+│   ├── index.ts          # Zod-based env validation + app config
+│   └── swagger.ts        # Swagger/OpenAPI setup
+├── controllers/          # Request handlers (extends BaseController)
 │   ├── BaseController.ts
 │   ├── auth.controller.ts
 │   ├── account.controller.ts
-│   └── index.ts
-├── services/        # Business logic (extends BaseService)
+│   ├── subscription.controller.ts
+│   ├── billing.controller.ts
+│   └── ...
+├── services/             # Business logic (extends BaseService)
 │   ├── BaseService.ts
 │   ├── auth.service.ts
 │   ├── account.service.ts
-│   └── index.ts
-├── repositories/    # Data access layer (Repository Pattern)
+│   ├── subscription.service.ts
+│   └── ...
+├── repositories/         # Data access layer (Repository Pattern)
 │   ├── BaseRepository.ts
 │   ├── AccountRepository.ts
 │   ├── UserRepository.ts
-│   └── index.ts
-├── routes/          # API routes
-│   ├── auth.route.ts
-│   ├── account.route.ts
-│   └── index.ts
-├── models/          # Data models/interfaces
+│   └── ...
+├── models/               # Data models/interfaces
 │   ├── auth.model.ts
 │   ├── account.model.ts
-│   └── index.ts
-├── dto/             # Data Transfer Objects
-│   ├── AccountDTO.ts
-│   ├── UserDTO.ts
-│   └── index.ts
-├── validators/      # Zod validation schemas
-│   ├── auth.validator.ts
-│   ├── account.validator.ts
-│   └── index.ts
-├── middlewares/     # Express middlewares
-│   ├── validator.middleware.ts
-│   └── index.ts
-├── errors/          # Custom error classes
-│   ├── AppError.ts
-│   └── index.ts
-├── interfaces/      # TypeScript interfaces
-│   ├── IRepository.ts
-│   ├── IService.ts
-│   └── index.ts
-├── di/              # Dependency Injection
-│   ├── Container.ts
-│   ├── setup.ts
-│   └── index.ts
-├── utils/           # Utility functions
-│   ├── catchAsync.ts
-│   ├── idGenerator.ts
-│   └── index.ts
-├── app.ts           # Express app configuration
-└── server.ts        # Server entry point
+│   ├── subscription.model.ts
+│   └── ...
+├── dto/                  # Data Transfer Objects
+├── validators/           # Zod validation schemas
+├── middlewares/          # Express middlewares (auth, validation, rate limiting)
+├── errors/               # Custom error classes
+├── interfaces/           # Shared interfaces (repos, services, providers)
+├── di/                   # Dependency Injection container & wiring
+├── utils/                # Utility functions (logging, JWT, password hashing, etc.)
+├── providers/            # Email, SMS, MFA provider abstractions
+├── payment-providers/    # Stripe and payment provider abstractions
+├── queue/                # BullMQ jobs (e.g., trial expiration)
+├── routes/               # API routes
+└── scripts/
+    └── scaffoldModule.ts # CLI to scaffold new modules
 ```
 
 ## Naming Convention
@@ -88,23 +76,59 @@ To add a new domain/module:
 
 This pattern keeps business logic in services, data access in repositories, and HTTP concerns in controllers, so swapping the floorplan example for another product is straightforward.
 
+### Scaffolding New Modules
+
+You can quickly scaffold a new module (model + repository + service + controller + route) using the built-in script:
+
+```bash
+npm run scaffold myModule
+```
+
+This will:
+
+- Create:
+  - `models/myModule.model.ts`
+  - `repositories/MyModuleRepository.ts`
+  - `services/myModule.service.ts`
+  - `controllers/myModule.controller.ts`
+  - `routes/myModule.route.ts`
+- Print ready-to-paste snippets for:
+  - DI registrations in `di/setup.ts`
+  - Route export in `routes/index.ts`
+  - Route mount in `app.ts`
+
 ## Features
 
 - ✅ **TypeScript** for type safety
 - ✅ **Express.js** web framework
 - ✅ **Multi-tenant SaaS architecture** with Account system
-- ✅ **14-day trial system** for MVP lead extraction
+- ✅ **Trial system** for MVP lead extraction (configurable trial length)
 - ✅ **Design Patterns**:
   - Repository Pattern (data access abstraction)
   - Dependency Injection (loose coupling)
   - DTO Pattern (data transfer objects)
   - Base Classes (code reuse)
-  - Strategy Pattern (error handling)
+  - Strategy Pattern (auth, payments, notifications)
+- ✅ **Security & hardening**:
+  - Helmet (security headers)
+  - CORS (configurable, currently wide-open for template use)
+  - Gzip compression
+  - Basic input sanitization (guards against simple XSS and query injection)
+  - Centralized error handling
+- ✅ **Rate limiting**:
+  - Global IP-based rate limiting
+  - Stricter rate limiting on auth routes
+- ✅ **Authentication**:
+  - Password-based auth with **bcrypt** hashing
+  - Multi-strategy auth design (`password`, `oauth2`, `saml`, `sso` hooks)
+  - JWT-based sessions
+  - **MFA support** via pluggable TOTP provider
+- ✅ **Account & subscription system** (free/trial/pro)
+- ✅ **Notifications layer**:
+  - Pluggable **email provider** (default: noop logger)
+  - Pluggable **SMS provider** (default: noop logger)
 - ✅ **Zod validation** for API requests and environment variables
-- ✅ **Custom error classes** with proper HTTP status codes
-- ✅ **Centralized error handling** with operational vs programming errors
-- ✅ **Environment variable validation** with Zod
-- ✅ **Health check endpoint**
+- ✅ **Health check** & Swagger API docs
 - ✅ **Modular and scalable** architecture
 
 ## Getting Started
@@ -140,7 +164,9 @@ npm start
 
 ### Auth
 - `POST /api/v1/auth/register` - Register a new user and create account (multi-tenant)
-- `POST /api/v1/auth/login` - Login user
+- `POST /api/v1/auth/login` - Login with multi-strategy auth (password + optional MFA, OAuth2/SAML/SSO hooks)
+- `POST /api/v1/auth/forgot-password` - Request password reset (sends email/SMS via providers)
+- `POST /api/v1/auth/reset-password` - Reset password using reset token
 
 ### Accounts
 - `POST /api/v1/accounts` - Create a new account
@@ -159,9 +185,29 @@ API_VERSION=v1
 DATABASE_URL=
 JWT_SECRET=
 JWT_EXPIRES_IN=7d
+TRIAL_DAYS=14
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+EMAIL_FROM_ADDRESS=no-reply@example.com
+EMAIL_PROVIDER=noop
+SMS_PROVIDER=noop
 ```
 
 **Note:** Environment variables are validated using Zod on application startup. Invalid configurations will prevent the server from starting.
+
+### Security & Rate Limiting
+
+- **Helmet** and **compression** are enabled in `app.ts` by default.
+- Rate limits are controlled via:
+  - `RATE_LIMIT_WINDOW_MS` – window size in ms (default 15 minutes).
+  - `RATE_LIMIT_MAX_REQUESTS` – max requests per IP per window (default 100).
+
+### Notifications
+
+- **EMAIL_PROVIDER** and **SMS_PROVIDER** are currently `noop` (log-only) for local development and templating.
+- To integrate a real provider:
+  - Implement `IEmailProvider` / `ISmsProvider` in `providers/`.
+  - Update `EmailProviderFactory` / `SmsProviderFactory` to return your implementation based on config.
 
 ## Multi-Tenant Architecture
 
@@ -191,6 +237,28 @@ router.post(
 ### Environment Variable Validation
 
 Environment variables are validated on startup using Zod in `src/config/index.ts`. Invalid configurations will cause the application to exit with an error message.
+
+## Authentication & MFA Guide
+
+- **Registration** (`POST /api/v1/auth/register`):
+  - Creates an account + owner user.
+  - Password is hashed with **bcrypt** before storage.
+- **Login** (`POST /api/v1/auth/login`):
+  - Supports a `method` field (`password`, `oauth2`, `saml`, `sso` – non-password strategies are extensible hooks).
+  - For password logins:
+    - Required: `email`, `password`.
+    - Optional: `mfaCode` (required if `mfaEnabled` for the user).
+- **MFA (TOTP)**:
+  - Backed by a pluggable MFA provider (`TotpMfaProvider`).
+  - To enable MFA for a user:
+    1. Generate a secret + otpauth URL via the MFA provider.
+    2. Show QR code in the frontend.
+    3. Verify a first code from the authenticator app.
+    4. Persist `mfaEnabled = true` and `mfaSecret` for the user.
+  - On subsequent logins, users with `mfaEnabled` must provide a valid `mfaCode`.
+- **Password reset**:
+  - `POST /api/v1/auth/forgot-password` – generates a secure token, stores its hash, and sends email/SMS via providers.
+  - `POST /api/v1/auth/reset-password` – verifies token, sets new hashed password, clears reset fields, and returns a fresh JWT.
 
 ## Architecture Patterns
 
